@@ -1,0 +1,1426 @@
+/*
+---------------------------------------------------------
+[SilentGamerz Dust2] Plugin: Shop Models Menu v 1.3
+
+Plugin made by Meliodas #sG
+
+Plugin request made by D.K for Dust2
+
+If you modify the code, please DO NOT change the author!
+
+Operation:
+The purpose of the Plugin is for the player to purchase any
+model they want if they have the amount of XP needed to 
+obtain, after obtaining it will be saved for you to use 
+whenever you want.
+
+---------------------------------------------------------
+Contacts: SilentGamerz.org
+---------------------------------------------------------
+
+Changes log - Meliodas #sG
+-> v 1.0 = First release!
+-> v 1.1 = Fixed bug with nVault
+-> v 1.2 = Fixed Models bug
+-> v 1.3 = Support to Knife, AK47, M4A1 & AWP,
+More Optimized, now is Easy to edit sma file.
+
+Tutorial:
+Until a file update doesn.ini t come out,
+you can follow the tutorial here for edit models, names, 
+and Costs, You can change things easily by the way 'Definitions'
+
+
+Advantages:
+-> Save with nVault
+-> Easy to edit by SMA itself
+-> Support for 32 Models 
+
+Note: The version is under development, so improvements can be made.
+
+Note: You only need to edit the name once for #define to change in Menu & Chat
+
+Warning: Do not add commas or dots to a number value (not supported yet)
+Example: - Correct: 1000 / Incorrect: 1,000 or 1.000
+
+Warning: Don't change anything other than settings/definitions unless you know what you're doing
+---------------------------------------------------------
+Don't forget to visit SilentGamerz.org
+---------------------------------------------------------
+*/
+
+#include <amxmodx>
+#include <nvault_array>
+#include <cstrike>
+
+#include <hamsandwich> 
+#include <fakemeta>
+
+
+/*==================[ Definitions ] ==========================*/
+#define iXP 2500  // Cost of First AK47, Knife, M4A1 & AWP. 
+#define yXP 3500  // Cost of Second AK47, Knife, M4A1 & AWP.
+#define zXP 4500  // Cost of Three AK47, Knife, M4A1 & AWP.
+
+
+#define KNIFE_1 "models/SG_Dust2/Knife/v_Knife_Jader.mdl"   // Your model, example: dk1.mdl
+#define KNIFE_2 "models/SG_Dust2/Knife/v_Knife_Dog.mdl"     
+#define KNIFE_3 "models/SG_Dust2/Knife/v_Knife_Dk.mdl"
+
+#define AK47_1 "models/SG_Dust2/AK47/v_AK47_Black.mdl"
+#define AK47_2 "models/SG_Dust2/AK47/v_AK47_Rose.mdl"
+#define AK47_3 "models/SG_Dust2/AK47/v_AK47_Paladin.mdl"
+
+#define M4A1_1 "models/SG_Dust2/M4A1/v_M4A1_Black.mdl"
+#define M4A1_2 "models/SG_Dust2/M4A1/v_M4A1_Rose.mdl"
+#define M4A1_3 "models/SG_Dust2/M4A1/v_M4A1_Paladin.mdl"
+
+#define AWP_1 "models/SG_Dust2/AWP/v_AWP_Black.mdl"
+#define AWP_2 "models/SG_Dust2/AWP/v_AWP_Rose.mdl"
+#define AWP_3 "models/SG_Dust2/AWP/v_AWP_Paladin.mdl"
+
+
+#define KNIFE_NAME_0 "Knife Default"   // Name of gun, 0 is default weapon 
+#define KNIFE_NAME_1 "Razor"                    
+#define KNIFE_NAME_2 "Knife Insan"
+#define KNIFE_NAME_3 "Hunter"   
+
+#define AK47_NAME_0 "AK47 Default"  // Default too
+#define AK47_NAME_1 "AK47 Universal"
+#define AK47_NAME_2 "AK47 Master"
+#define AK47_NAME_3 "AK47 Of Meliodas"
+
+#define M4A1_NAME_0 "M4A1 Powerful" // Default too
+#define M4A1_NAME_1 "M4A1 Ultimate"
+#define M4A1_NAME_2 "M4A1 Magic"
+#define M4A1_NAME_3 "M4A1 Amazing Wow"
+
+#define AWP_NAME_0 "AWP Default" // Default too
+#define AWP_NAME_1 "AWP Gaules"
+#define AWP_NAME_2 "AWP FalleN"
+#define AWP_NAME_3 "AWP Dog"
+
+/*============================================================*/
+
+new szModels[][][] =
+{ 
+	
+	
+        {	  
+        CSW_KNIFE,
+        KNIFE_1,
+        KNIFE_2,
+        KNIFE_3,
+        AK47_1,
+        AK47_2,
+        AK47_3,
+        M4A1_1,
+        M4A1_2,
+        M4A1_3,
+        AWP_1,
+        AWP_2,
+        AWP_3 
+}
+
+}
+
+/*======[ Enums ]=======*/
+enum WeaponBits (<<=1)
+{
+knifedefault = 1,
+knifeblack,
+kniferose,
+knifepaladian,   // End of Knife
+wtBlack,
+wtRose,
+wtPaladian,      // End of AK47
+m4a1Black,
+m4a1Rose,
+m4a1Paladian,    // End of M4A1
+awpblack,
+awprose,
+awppaladian    // End of AWP
+
+}
+enum Weapons
+{
+WeaponKnifeDefault = 1,
+WeaponKnifeBlack,
+WeaponKnifeRose,
+WeaponKnifePaladian,    // Num End Knife
+WeaponDefault,
+WeaponBlack,
+WeaponRose,
+WeaponPaladian,         // Num End AK47
+WeaponM4A1Default,
+WeaponM4A1Black,
+WeaponM4A1Rose,
+WeaponM4A1Paladian,    // Num End M4A1
+WeaponAWPDefault,
+WeaponAWPBlack,
+WeaponAWPRose,
+WeaponAWPPaladian      // Num End AWP
+}
+enum PlayerData
+{
+WeaponBits:PlayerWeapons,
+Weapons:CurrentWeapon
+}
+
+/*========================*/
+
+
+/*=====[ Booleans ]======*/
+// Knife
+new bool:gKnife_Default[33]
+new bool:gKnife_Black[33]
+new bool:gKnife_Rose[33]
+new bool:gKnife_Paladin[33]
+// AK47
+new bool:gAK47_Default[33]
+new bool:gAK47_Black[33]
+new bool:gAK47_Rose[33]
+new bool:gAK47_Paladin[33]
+// M4A1
+new bool:gM4A1_Default[33]
+new bool:gM4A1_Black[33]
+new bool:gM4A1_Rose[33]
+new bool:gM4A1_Paladin[33]
+//AWP
+new bool:gAWP_Default[33]
+new bool:gAWP_Black[33]
+new bool:gAWP_Rose[33]
+new bool:gAWP_Paladin[33]
+
+/*========================*/
+
+/*================ [ Variables and Natives ] =================*/
+
+new g_szAuthID[ MAX_PLAYERS + 1 ][ 34 ];
+new g_pdData[ MAX_PLAYERS + 1 ][ PlayerData ];
+new g_Vault;
+
+// Natives 
+native crxranks_get_user_xp(id) 
+native crxranks_set_user_xp(id, exp) 
+
+#define AddWeapon(%1,%2)    g_pdData[%1][PlayerWeapons]|=%2 
+#define RemoveWeapon(%1,%2)    g_pdData[%1][PlayerWeapons]&=~%2
+
+/*=============================================================*/
+
+public plugin_init() 
+{
+
+
+g_Vault = nvault_open( "SG_Models" );
+
+if( g_Vault == INVALID_HANDLE )
+{		 		
+set_fail_state( "[SilentGamerz Dust2] Error to Open nVault, check SMA file or Modules." )
+}
+
+RegisterHam(Ham_Item_Deploy, "weapon_knife", "OnItemDeployPost", 1)
+RegisterHam(Ham_Item_Deploy, "weapon_ak47", "OnItemDeployPost", 1) 
+RegisterHam(Ham_Item_Deploy, "weapon_m4a1", "OnItemDeployPost", 1) 
+RegisterHam(Ham_Item_Deploy, "weapon_awp", "OnItemDeployPost", 1) 
+
+register_plugin("Shop Menu Models", "1.0","Meliodas #sG") 
+
+//register_event("CurWeapon","CurWeapon","be","2=28") // Bad
+
+register_clcmd("say /models","szModelsMenu")     // Open the Menu Models
+
+register_clcmd("knifemodels","szModelKnife")     // Is Knife Menu Models
+register_clcmd("ak47models","szModelAK47")       // Is AK47 Menu Models
+register_clcmd("m4a1models","szModelM4A1")       // Is M4A1 Menu Models
+register_clcmd("awpmodels","szModelAWP")         // Is AWP Menu Models
+}
+
+public client_authorized(id)
+{
+
+new iTS;
+get_user_authid(id, g_szAuthID[id], charsmax( g_szAuthID[] ) )
+nvault_get_array(g_Vault, g_szAuthID[id], g_pdData[id][ PlayerData:0 ], sizeof(g_pdData[]), iTS )
+
+server_print( "[SilentGamerz Dust2] Loading model(s) for %s", g_szAuthID[id])
+}
+
+public client_disconnected(id)
+{
+
+nvault_set_array(g_Vault, g_szAuthID[ id ], g_pdData[id][PlayerData:0], sizeof( g_pdData[]))
+} 
+
+public plugin_end()
+{
+
+nvault_close(g_Vault)
+}
+public plugin_precache()
+{
+precache_model(szModels[0][1])
+precache_model(szModels[0][2])
+precache_model(szModels[0][3])
+precache_model(szModels[0][4])
+precache_model(szModels[0][5])
+precache_model(szModels[0][6])
+precache_model(szModels[0][7])
+precache_model(szModels[0][8])
+precache_model(szModels[0][9])
+precache_model(szModels[0][10])
+precache_model(szModels[0][11])
+precache_model(szModels[0][12])
+}
+
+
+/*========================== [ Menu Shop Models Main ] ========================*/
+
+public szModelsMenu(id)
+{
+new Menu
+static szMenu[512] 
+
+new szXP
+szXP = crxranks_get_user_xp(id)
+formatex(szMenu,charsmax(szMenu),"\ysG | Shop Models Menu^n\rYour XP: \w%i", szXP) 
+
+Menu = menu_create(szMenu,"models_menu")
+
+formatex(szMenu,charsmax(szMenu),"\wKnife Models \d[Active]") 
+menu_additem(Menu, szMenu, "1")
+
+formatex(szMenu,charsmax(szMenu),"\wAK47 Models \d[Active]") 
+menu_additem(Menu, szMenu, "2")
+
+formatex(szMenu,charsmax(szMenu),"\wM4A1 Models \d[Active]") 
+menu_additem(Menu, szMenu, "3")
+
+formatex(szMenu,charsmax(szMenu),"\wAWP Models \d[Active]") 
+menu_additem(Menu, szMenu, "4")
+
+menu_setprop(Menu,MPROP_EXIT,MEXIT_ALL) 
+menu_display(id,Menu,0)
+
+return PLUGIN_HANDLED 
+}	
+/*================================================================================*/
+public models_menu(id, iMenu, iKey)
+{
+if(!is_user_alive(id))
+return PLUGIN_HANDLED
+
+switch(iKey)
+{
+case 0:
+{
+szModelKnife(id)
+}
+case 1:
+{
+szModelAK47(id) 
+}
+//szModelAK47(id)}
+case 2:
+{
+szModelM4A1(id)
+}
+//szModelM4A1(id)}
+case 3:
+{ 
+szModelAWP(id)
+}
+//szModelAWP(id)}
+}
+menu_destroy(iMenu)
+return PLUGIN_HANDLED
+}
+
+
+/*======================================[ Knife Shop Menu ] =============================================*/
+public szModelKnife(id)
+{
+
+new jMenu, szXP
+static szMenu[512] 
+szXP = crxranks_get_user_xp(id)
+formatex(szMenu,charsmax(szMenu),"\rsG | Knife Models [SilentGamerz]^n\rYour XP: \w%i", szXP) 
+jMenu = menu_create(szMenu,"knife_menu") 
+
+
+if(gKnife_Default[id])
+{
+formatex(szMenu,charsmax(szMenu),"\d%s \r[Selected]", KNIFE_NAME_0) 
+menu_additem(jMenu, szMenu, "1") 
+}
+
+else
+{
+formatex(szMenu,charsmax(szMenu),"\w%s", KNIFE_NAME_0) 
+menu_additem(jMenu, szMenu, "1") ; }
+
+if(gKnife_Black[id]){
+formatex(szMenu,charsmax(szMenu),"\w%s \r[Selected]", KNIFE_NAME_1)
+menu_additem(jMenu, szMenu, "2") 
+}
+
+
+else if ( g_pdData[ id ][ PlayerWeapons ] & knifeblack ) 
+{
+formatex(szMenu,charsmax(szMenu),"\w%s \d[Purchased]", KNIFE_NAME_1)
+menu_additem(jMenu, szMenu, "2") 
+}
+
+else if (crxranks_get_user_xp(id) >= iXP)
+{
+formatex(szMenu,charsmax(szMenu),"\w%s \d[You Can Buy]", KNIFE_NAME_1) 
+menu_additem(jMenu, szMenu, "2") 
+}
+else
+{
+formatex(szMenu,charsmax(szMenu),"\d%s \r[XP: %i]", KNIFE_NAME_1, iXP)
+menu_additem(jMenu, szMenu, "2") 
+}
+
+if(gKnife_Rose[id])
+{
+formatex(szMenu,charsmax(szMenu),"\w%s \r[Selected]", KNIFE_NAME_2)
+menu_additem(jMenu, szMenu, "3") 
+}
+
+else if ( g_pdData[ id ][ PlayerWeapons ] & kniferose ) 
+{
+formatex(szMenu,charsmax(szMenu),"\w%s \d[Purchased]", KNIFE_NAME_2)
+menu_additem(jMenu, szMenu, "3") 
+}
+
+else if (crxranks_get_user_xp(id) >= yXP)
+{
+formatex(szMenu,charsmax(szMenu),"\w%s \d[You Can Buy]", KNIFE_NAME_2) 
+menu_additem(jMenu, szMenu, "3") 
+}
+
+else
+{
+formatex(szMenu,charsmax(szMenu),"\d%s \r[XP: %i]", KNIFE_NAME_2, yXP)
+menu_additem(jMenu, szMenu, "3") 
+}
+
+if(gKnife_Paladin[id]){
+formatex(szMenu,charsmax(szMenu),"\w%s \r[Selected]", KNIFE_NAME_3)
+menu_additem(jMenu, szMenu, "4") 
+}
+
+else if ( g_pdData[ id ][ PlayerWeapons ] & knifepaladian ) 
+{
+formatex(szMenu,charsmax(szMenu),"\w%s \d[Purchased]", KNIFE_NAME_3)
+menu_additem(jMenu, szMenu, "4") 
+}
+
+else if (crxranks_get_user_xp(id) >= zXP)
+{
+formatex(szMenu,charsmax(szMenu),"\w%s \d[You Can Buy]", KNIFE_NAME_3) 
+menu_additem(jMenu, szMenu, "4")
+}
+
+else
+{
+formatex(szMenu,charsmax(szMenu),"\d%s \r[XP: %i]", KNIFE_NAME_3, zXP)
+menu_additem(jMenu, szMenu, "4")
+}
+
+menu_setprop(jMenu,MPROP_EXIT,MEXIT_ALL) 
+menu_display(id,jMenu,0)
+return PLUGIN_HANDLED 
+}
+
+public knife_menu(id, iMenu, iKey, ent )
+{
+if(!is_user_alive(id))
+return PLUGIN_HANDLED
+
+switch(iKey)
+{
+case 0:
+{
+	
+	if ( g_pdData[ id ][ CurrentWeapon ] == WeaponKnifeDefault || gKnife_Default[id])
+	{			 
+		dust2_chat(id,"!gsG | !nYou are already using this model.")
+	}
+	else
+	{
+		
+		dust2_chat(id,"!gsG | !nModel successfully exchanged.") 
+		gKnife_Default[id] = true
+		gKnife_Black[id] = false
+		gKnife_Rose[id] = false
+		gKnife_Paladin[id] = false
+		OnItemDeployPost(ent)
+	}
+	
+}
+case 1:
+{
+	if ( g_pdData[ id ][ CurrentWeapon ] == WeaponKnifeBlack || gKnife_Black[id])
+	{
+		gKnife_Default[id] = false
+		gKnife_Black[id] = true
+		gKnife_Rose[id] = false
+		gKnife_Paladin[id] = false
+		dust2_chat(id,"!gsG | !nYou are already using this model.")
+	}
+	else
+	{
+		if ( g_pdData[ id ][ PlayerWeapons ] & knifeblack )
+		{
+			
+			
+			dust2_chat(id,"!gsG | !nModel successfully exchanged.") 
+			gKnife_Default[id] = false
+			gKnife_Black[id] = true
+			gKnife_Rose[id] = false
+			gKnife_Paladin[id] = false
+			OnItemDeployPost(ent)
+		}
+		else 
+		{
+			
+			if (crxranks_get_user_xp(id) < iXP) 
+			{
+				dust2_chat(id,"!gsG | !nYou need to have more !tXP !nto buy this model.") 
+			}
+			else
+			{
+				crxranks_set_user_xp(id, crxranks_get_user_xp(id) - iXP) 
+				AddWeapon( id , knifeblack )
+				OnItemDeployPost(ent)
+				dust2_chat(id,"!gsG | !nCongratulations, you bought !t%s!n!", KNIFE_NAME_1) 
+				gKnife_Black[id] = true
+				gKnife_Rose[id] = false
+				gKnife_Paladin[id] = false
+				gKnife_Default[id] = false
+			}
+			
+			
+		}
+	}
+	
+}
+case 2:
+{
+	if ( g_pdData[ id ][ CurrentWeapon ] == WeaponKnifeRose || gKnife_Rose[id])
+	{
+
+		dust2_chat(id,"!gsG | !nYou are already using this model.")
+	}
+	else
+	{
+		if ( g_pdData[ id ][ PlayerWeapons ] & kniferose )
+		{
+			dust2_chat(id,"!gsG | !nModel successfully exchanged.") 
+			gKnife_Default[id] = false
+			gKnife_Black[id] = false
+			gKnife_Rose[id] = true
+			gKnife_Paladin[id] = false
+			OnItemDeployPost(ent)
+		}	
+		else 
+		{
+			
+			if (crxranks_get_user_xp(id) < yXP) 
+			{
+				dust2_chat(id,"!gsG | !nYou need to have more !tXP !nto buy this model.") 
+			}
+			else
+			{
+				crxranks_set_user_xp(id, crxranks_get_user_xp(id) - yXP) 
+				AddWeapon( id , kniferose )
+				OnItemDeployPost(ent)
+				dust2_chat(id,"!gsG | !nCongratulations, you bought !t%s!n!", KNIFE_NAME_2) 
+				gKnife_Black[id] = false
+				gKnife_Rose[id] = true
+				gKnife_Paladin[id] = false
+				gKnife_Default[id] = false
+			}
+		}
+		
+		
+	}
+	
+}
+case 3:
+{
+	if ( g_pdData[ id ][ CurrentWeapon ] == WeaponKnifePaladian || gKnife_Paladin[id])
+	{
+		//gKnife_Default[id] = false
+		//gKnife_Black[id] = false
+		//gKnife_Rose[id] = false
+		//gKnife_Paladin[id] = true
+		dust2_chat(id,"!gsG | !nYou are already using this model.")
+	}
+	else
+	{
+		if ( g_pdData[ id ][ PlayerWeapons ] & knifepaladian )
+		{
+			dust2_chat(id,"!gsG | !nModel successfully exchanged.") 
+			gKnife_Default[id] = false
+			gKnife_Black[id] = false
+			gKnife_Rose[id] = false
+			gKnife_Paladin[id] = true
+			OnItemDeployPost(ent)
+		}
+		
+		else 
+		{
+			
+			if (crxranks_get_user_xp(id) < zXP) 
+			{
+				dust2_chat(id,"!gsG | !nYou need to have more !tXP !nto buy this model.") 
+			}
+			else
+			{
+				crxranks_set_user_xp(id, crxranks_get_user_xp(id) - zXP) 
+				AddWeapon( id , knifepaladian)
+				OnItemDeployPost(ent)
+				dust2_chat(id,"!gsG | !nCongratulations, you bought !t%s!n!", KNIFE_NAME_3) 
+				gKnife_Black[id] = false
+				gKnife_Rose[id] = false
+				gKnife_Paladin[id] = true
+				gKnife_Default[id] = false
+			}
+		}
+		
+		
+	}
+	
+}
+}
+menu_destroy(iMenu)
+return PLUGIN_HANDLED
+}	
+/*==========================================================================================================*/			
+
+/*=====================================[ AK47 Shop Menu  ]==================================================*/	 	
+public szModelAK47(id) 
+{
+
+new jMenu, szXP
+static szMenu[512] 
+szXP = crxranks_get_user_xp(id)
+formatex(szMenu,charsmax(szMenu),"\rsG | AK47 Models [SilentGamerz]^n\rYour XP: \w%i", szXP) 
+jMenu = menu_create(szMenu,"ak47_menu") 
+
+if(gAK47_Default[id]){
+formatex(szMenu,charsmax(szMenu),"\d%s \r[Selected]", AK47_NAME_0) 
+menu_additem(jMenu, szMenu, "1") ; }
+
+else{
+formatex(szMenu,charsmax(szMenu),"\w%s", AK47_NAME_0) 
+menu_additem(jMenu, szMenu, "1") ; }
+
+if(gAK47_Black[id]){
+formatex(szMenu,charsmax(szMenu),"\w%s \r[Selected]", AK47_NAME_1)
+menu_additem(jMenu, szMenu, "2") ; }
+
+
+else if ( g_pdData[ id ][ PlayerWeapons ] & wtBlack ) {
+formatex(szMenu,charsmax(szMenu),"\w%s \d[Purchased]", AK47_NAME_1)
+menu_additem(jMenu, szMenu, "2") ; }
+
+else if (crxranks_get_user_xp(id) >= iXP){
+formatex(szMenu,charsmax(szMenu),"\w%s \d[You Can Buy]", AK47_NAME_1) 
+menu_additem(jMenu, szMenu, "2") ; }
+
+else{
+formatex(szMenu,charsmax(szMenu),"\d%s \r[XP: %i]", AK47_NAME_1, iXP)
+menu_additem(jMenu, szMenu, "2") ; }
+
+if(gAK47_Rose[id]){
+formatex(szMenu,charsmax(szMenu),"\w%s \r[Selected]", AK47_NAME_2)
+menu_additem(jMenu, szMenu, "3") ; }
+
+else if ( g_pdData[ id ][ PlayerWeapons ] & wtRose ) {
+formatex(szMenu,charsmax(szMenu),"\w%s \d[Purchased]", AK47_NAME_2)
+menu_additem(jMenu, szMenu, "3") ; }
+
+else if (crxranks_get_user_xp(id) >= yXP){
+formatex(szMenu,charsmax(szMenu),"\w%s \d[You Can Buy]", AK47_NAME_2) 
+menu_additem(jMenu, szMenu, "3") ; }
+
+else{
+formatex(szMenu,charsmax(szMenu),"\d%s \r[XP: %i]", AK47_NAME_2, zXP)
+menu_additem(jMenu, szMenu, "3") ; }
+
+if(gAK47_Paladin[id]){
+formatex(szMenu,charsmax(szMenu),"\w%s \r[Selected]", AK47_NAME_3)
+menu_additem(jMenu, szMenu, "4") ; }
+
+else if ( g_pdData[ id ][ PlayerWeapons ] & wtPaladian ) {
+formatex(szMenu,charsmax(szMenu),"\w%s \d[Purchased]", AK47_NAME_3)
+menu_additem(jMenu, szMenu, "4") ; }
+
+else if (crxranks_get_user_xp(id) >= zXP){
+formatex(szMenu,charsmax(szMenu),"\w%s \d[You Can Buy]", AK47_NAME_3) 
+menu_additem(jMenu, szMenu, "4") ; }
+
+else{
+formatex(szMenu,charsmax(szMenu),"\d%s \r[XP: %i]", AK47_NAME_3, zXP)
+menu_additem(jMenu, szMenu, "4") ; }
+
+menu_setprop(jMenu,MPROP_EXIT,MEXIT_ALL) 
+menu_display(id,jMenu,0)
+return PLUGIN_HANDLED 
+}
+/*=================================================================================================================*/
+public ak47_menu(id, iMenu, iKey, ent )
+{
+if(!is_user_alive(id))
+return PLUGIN_HANDLED
+
+switch(iKey)
+{
+	case 0:
+	{
+		
+		if ( g_pdData[ id ][ CurrentWeapon ] == WeaponDefault || gAK47_Default[id])
+		{			 
+
+			dust2_chat(id,"!gsG | !nYou are already using this model.")
+		}
+		else
+		{	
+			dust2_chat(id,"!gsG | !nModel successfully exchanged.") 
+			gAK47_Default[id] = true
+			gAK47_Black[id] = false
+			gAK47_Rose[id] = false
+			gAK47_Paladin[id] = false
+			OnItemDeployPost(ent)
+		}
+		
+	}
+	case 1:
+	{
+		if ( g_pdData[ id ][ CurrentWeapon ] == WeaponBlack || gAK47_Black[id])
+		{
+			gAK47_Default[id] = false
+			gAK47_Black[id] = true
+			gAK47_Rose[id] = false
+			gAK47_Paladin[id] = false
+			dust2_chat(id,"!gsG | !nYou are already using this model.")
+		}
+		else
+		{
+			if ( g_pdData[ id ][ PlayerWeapons ] & wtBlack )
+			{
+				
+				dust2_chat(id,"!gsG | !nModel successfully exchanged.") 
+				gAK47_Default[id] = false
+				gAK47_Black[id] = true
+				gAK47_Rose[id] = false
+				gAK47_Paladin[id] = false
+				OnItemDeployPost(ent)
+			}
+			else 
+			{
+				
+				if (crxranks_get_user_xp(id) < iXP) 
+				{
+					dust2_chat(id,"!gsG | !nYou need to have more !tXP !nto buy this model.") 
+				}
+				else
+				{
+					crxranks_set_user_xp(id, crxranks_get_user_xp(id) - iXP) 
+					AddWeapon( id , wtBlack )
+					OnItemDeployPost(ent)
+					dust2_chat(id,"!gsG | !nCongratulations, you bought !t%s!n!", AK47_NAME_1) 
+					gAK47_Default[id] = false
+					gAK47_Black[id] = true
+					gAK47_Rose[id] = false
+					gAK47_Paladin[id] = false
+				}
+				
+				
+			}
+		}
+		
+	}
+	case 2:
+	{
+		if ( g_pdData[ id ][ CurrentWeapon ] == WeaponRose|| gAK47_Rose[id])
+		{
+			dust2_chat(id,"!gsG | !nYou are already using this model.")
+		}
+		else
+		{
+			if ( g_pdData[ id ][ PlayerWeapons ] & wtRose )
+			{
+				dust2_chat(id,"!gsG | !nModel successfully exchanged.") 
+				gAK47_Default[id] = false
+				gAK47_Black[id] = false
+				gAK47_Rose[id] = true
+				gAK47_Paladin[id] = false
+				OnItemDeployPost(ent)
+			}	
+			else 
+			{
+				
+				if (crxranks_get_user_xp(id) < yXP) 
+				{
+					dust2_chat(id,"!gsG | !nYou need to have more !tXP !nto buy this model.") 
+				}
+				else
+				{
+					crxranks_set_user_xp(id, crxranks_get_user_xp(id) - yXP) 
+					AddWeapon( id , wtRose )
+					OnItemDeployPost(ent)
+					dust2_chat(id,"!gsG | !nCongratulations, you bought !t%s!n!", AK47_NAME_2) 
+					gAK47_Default[id] = false
+					gAK47_Black[id] = false
+					gAK47_Rose[id] = true
+					gAK47_Paladin[id] = false
+				}
+			}
+			
+			
+		}
+		
+	}
+	case 3:
+	{
+		if ( g_pdData[ id ][ CurrentWeapon ] == WeaponPaladian|| gAK47_Paladin[id])
+		{
+
+			dust2_chat(id,"!gsG | !nYou are already using this model.")
+		}
+		else
+		{
+			if ( g_pdData[ id ][ PlayerWeapons ] & wtPaladian )
+			{
+				dust2_chat(id,"!gsG | !nModel successfully exchanged.") 
+				gAK47_Default[id] = false
+				gAK47_Black[id] = false
+				gAK47_Rose[id] = false
+				gAK47_Paladin[id] = true
+				OnItemDeployPost(ent)
+			}
+			else 
+			{
+				
+				if (crxranks_get_user_xp(id) < zXP) 
+				{
+					dust2_chat(id,"!gsG | !nYou need to have more !tXP !nto buy this model.") 
+				}
+				else
+				{
+					crxranks_set_user_xp(id, crxranks_get_user_xp(id) - zXP) 
+					AddWeapon( id , wtPaladian)
+					OnItemDeployPost(ent)
+					dust2_chat(id,"!gsG | !nCongratulations, you bought !t%s!n!", AK47_NAME_3) 
+					gAK47_Default[id] = false
+					gAK47_Black[id] = false
+					gAK47_Rose[id] = false
+					gAK47_Paladin[id] = true
+				}
+			}
+			
+			
+		}
+		
+	}
+}
+menu_destroy(iMenu)
+return PLUGIN_HANDLED
+}
+/*====================================================================================================================================*/
+
+public szModelM4A1(id) 
+{
+
+new jMenu, szXP
+static szMenu[512] 
+szXP = crxranks_get_user_xp(id)
+formatex(szMenu,charsmax(szMenu),"\rsG | M4A1 Models [SilentGamerz]^n\rYour XP: \w%i", szXP) 
+jMenu = menu_create(szMenu,"m4a1_menu") 
+
+if(gM4A1_Default[id]){
+	formatex(szMenu,charsmax(szMenu),"\d%s \r[Selected]", M4A1_NAME_0) 
+menu_additem(jMenu, szMenu, "1") ; }
+
+else{
+	formatex(szMenu,charsmax(szMenu),"\w%s", M4A1_NAME_0) 
+menu_additem(jMenu, szMenu, "1") ; }
+
+if(gM4A1_Black[id]){
+	formatex(szMenu,charsmax(szMenu),"\w%s \r[Selected]", M4A1_NAME_1)
+menu_additem(jMenu, szMenu, "2") ; }
+
+
+else if ( g_pdData[ id ][ PlayerWeapons ] & m4a1Black ) {
+	formatex(szMenu,charsmax(szMenu),"\w%s \d[Purchased]", M4A1_NAME_1)
+menu_additem(jMenu, szMenu, "2") ; }
+
+else if (crxranks_get_user_xp(id) >= iXP){
+	formatex(szMenu,charsmax(szMenu),"\w%s \d[You Can Buy]", M4A1_NAME_1) 
+menu_additem(jMenu, szMenu, "2") ; }
+
+else{
+	formatex(szMenu,charsmax(szMenu),"\d%s \r[XP: %i]", M4A1_NAME_1, iXP)
+menu_additem(jMenu, szMenu, "2") ; }
+
+if(gM4A1_Rose[id]){
+	formatex(szMenu,charsmax(szMenu),"\w%s \r[Selected]", M4A1_NAME_2)
+menu_additem(jMenu, szMenu, "3") ; }
+
+else if ( g_pdData[ id ][ PlayerWeapons ] & m4a1Rose ) {
+	formatex(szMenu,charsmax(szMenu),"\w%s \d[Purchased]", M4A1_NAME_2)
+menu_additem(jMenu, szMenu, "3") ; }
+
+else if (crxranks_get_user_xp(id) >= yXP){
+	formatex(szMenu,charsmax(szMenu),"\w%s \d[You Can Buy]", M4A1_NAME_2) 
+menu_additem(jMenu, szMenu, "3") ; }
+
+else{
+	formatex(szMenu,charsmax(szMenu),"\d%s \r[XP: %i]", M4A1_NAME_2, yXP)
+menu_additem(jMenu, szMenu, "3") ; }
+
+if(gM4A1_Paladin[id]){
+	formatex(szMenu,charsmax(szMenu),"\w%s \r[Selected]", M4A1_NAME_3)
+menu_additem(jMenu, szMenu, "4") ; }
+
+else if ( g_pdData[ id ][ PlayerWeapons ] & m4a1Paladian ) {
+	formatex(szMenu,charsmax(szMenu),"\w%s \d[Purchased]", M4A1_NAME_3)
+menu_additem(jMenu, szMenu, "4") ; }
+
+else if (crxranks_get_user_xp(id) >= zXP){
+	formatex(szMenu,charsmax(szMenu),"\w%s \d[You Can Buy]", M4A1_NAME_3) 
+menu_additem(jMenu, szMenu, "4") ; }
+
+else{
+	formatex(szMenu,charsmax(szMenu),"\d%s \r[XP: %i]", M4A1_NAME_3, zXP)
+menu_additem(jMenu, szMenu, "4") ; }
+
+menu_setprop(jMenu,MPROP_EXIT,MEXIT_ALL) 
+menu_display(id,jMenu,0)
+return PLUGIN_HANDLED 
+}
+/*================================================================================================*/
+
+public m4a1_menu(id, iMenu, iKey, ent )
+{
+if(!is_user_alive(id))
+	return PLUGIN_HANDLED
+	
+	switch(iKey)
+	{
+		case 0:
+		{
+			
+			if ( g_pdData[ id ][ CurrentWeapon ] == WeaponM4A1Default|| gM4A1_Default[id])
+			{			 
+
+				dust2_chat(id,"!gsG | !nYou are already using this model.")
+			}
+			else
+			{	
+				dust2_chat(id,"!gsG | !nModel successfully exchanged.") 
+				gM4A1_Default[id] = true
+				gM4A1_Black[id] = false
+				gM4A1_Rose[id] = false
+				gM4A1_Paladin[id] = false
+				OnItemDeployPost(ent)
+			}
+			
+		}
+		case 1:
+		{
+			if ( g_pdData[ id ][ CurrentWeapon ] == WeaponM4A1Black || gM4A1_Black[id])
+			{
+				dust2_chat(id,"!gsG | !nYou are already using this model.")
+			}
+			else
+			{
+				if ( g_pdData[ id ][ PlayerWeapons ] & m4a1Black )
+				{
+					
+					dust2_chat(id,"!gsG | !nModel successfully exchanged.") 
+					gM4A1_Default[id] = false
+					gM4A1_Black[id] = true
+					gM4A1_Rose[id] = false
+					gM4A1_Paladin[id] = false
+					OnItemDeployPost(ent)
+				}
+				else 
+				{
+					
+					if (crxranks_get_user_xp(id) < iXP) 
+					{
+						dust2_chat(id,"!gsG | !nYou need to have more !tXP !nto buy this model.") 
+					}
+					else
+					{
+						crxranks_set_user_xp(id, crxranks_get_user_xp(id) - iXP) 
+						AddWeapon( id , m4a1Black )
+						OnItemDeployPost(ent)
+						dust2_chat(id,"!gsG | !nCongratulations, you bought !t%s!n!", M4A1_NAME_1) 
+						gM4A1_Default[id] = false
+						gM4A1_Black[id] = true
+						gM4A1_Rose[id] = false
+						gM4A1_Paladin[id] = false
+						
+					}
+					
+					
+				}
+			}
+			
+		}
+		case 2:
+		{
+			if ( g_pdData[ id ][ CurrentWeapon ] == WeaponM4A1Rose|| gM4A1_Rose[id])
+			{
+				dust2_chat(id,"!gsG | !nYou are already using this model.")
+			}
+			else
+			{
+				if ( g_pdData[ id ][ PlayerWeapons ] & m4a1Rose )
+				{
+					dust2_chat(id,"!gsG | !nModel successfully exchanged.") 
+					gM4A1_Default[id] = false
+					gM4A1_Black[id] = false
+					gM4A1_Rose[id] = true
+					gM4A1_Paladin[id] = false
+					OnItemDeployPost(ent)
+				}	
+				else 
+				{
+					
+					if (crxranks_get_user_xp(id) < yXP) 
+					{
+						dust2_chat(id,"!gsG | !nYou need to have more !tXP !nto buy this model.") 
+					}
+					else
+					{
+						crxranks_set_user_xp(id, crxranks_get_user_xp(id) - yXP) 
+						AddWeapon( id , m4a1Rose )
+						OnItemDeployPost(ent)
+						dust2_chat(id,"!gsG | !nCongratulations, you bought !t%s!n!", M4A1_NAME_2) 
+						gM4A1_Default[id] = false
+						gM4A1_Black[id] = false
+						gM4A1_Rose[id] = true
+						gM4A1_Paladin[id] = false
+					}
+				}
+				
+				
+			}
+			
+		}
+		case 3:
+		{
+			if ( g_pdData[ id ][ CurrentWeapon ] == WeaponM4A1Paladian|| gM4A1_Paladin[id])
+			{
+				dust2_chat(id,"!gsG | !nYou are already using this model.")
+			}
+			else
+			{
+				if ( g_pdData[ id ][ PlayerWeapons ] & m4a1Paladian )
+				{
+					dust2_chat(id,"!gsG | !nModel successfully exchanged.") 
+					gM4A1_Default[id] = false
+					gM4A1_Black[id] = false
+					gM4A1_Rose[id] = false
+					gM4A1_Paladin[id] = true
+					OnItemDeployPost(ent)
+				}
+				else 
+				{
+					
+					if (crxranks_get_user_xp(id) < zXP) 
+					{
+						dust2_chat(id,"!gsG | !nYou need to have more !tXP !nto buy this model.") 
+					}
+					else
+					{
+						crxranks_set_user_xp(id, crxranks_get_user_xp(id) - zXP) 
+						AddWeapon( id , m4a1Paladian)
+						OnItemDeployPost(ent)
+						dust2_chat(id,"!gsG | !nCongratulations, you bought !t%s!n!", M4A1_NAME_3) 
+						gM4A1_Default[id] = false
+						gM4A1_Black[id] = false
+						gM4A1_Rose[id] = false
+						gM4A1_Paladin[id] = true
+					}
+				}
+				
+				
+			}
+			
+		}
+	}
+	menu_destroy(iMenu)
+	return PLUGIN_HANDLED
+}
+/*=============================================================================================================================*/
+public szModelAWP(id) 
+{
+	
+	new jMenu, szXP
+	static szMenu[512] 
+	szXP = crxranks_get_user_xp(id)
+	formatex(szMenu,charsmax(szMenu),"\rsG | AWP Models [SilentGamerz]^n\rYour XP: \w%i", szXP) 
+	jMenu = menu_create(szMenu,"awp_menu") 
+	
+	if(gAWP_Default[id]){
+		formatex(szMenu,charsmax(szMenu),"\d%s \r[Selected]", AWP_NAME_0) 
+	menu_additem(jMenu, szMenu, "1") ; }
+	
+	else{
+		formatex(szMenu,charsmax(szMenu),"\w%s", AWP_NAME_0) 
+	menu_additem(jMenu, szMenu, "1") ; }
+	
+	if(gAWP_Black[id]){
+		formatex(szMenu,charsmax(szMenu),"\w%s \r[Selected]", AWP_NAME_1)
+	menu_additem(jMenu, szMenu, "2") ; }
+	
+	
+	else if ( g_pdData[ id ][ PlayerWeapons ] & awpblack ) {
+		formatex(szMenu,charsmax(szMenu),"\w%s \d[Purchased]", AWP_NAME_1)
+	menu_additem(jMenu, szMenu, "2") ; }
+	
+	else if (crxranks_get_user_xp(id) >= iXP){
+		formatex(szMenu,charsmax(szMenu),"\w%s \d[You Can Buy]", AWP_NAME_1) 
+	menu_additem(jMenu, szMenu, "2") ; }
+	
+	else{
+		formatex(szMenu,charsmax(szMenu),"\d%s \r[XP: %i]", AWP_NAME_1, iXP)
+	menu_additem(jMenu, szMenu, "2") ; }
+	
+	if(gAWP_Rose[id]){
+		formatex(szMenu,charsmax(szMenu),"\w%s \r[Selected]", AWP_NAME_2)
+	menu_additem(jMenu, szMenu, "3") ; }
+	
+	else if ( g_pdData[ id ][ PlayerWeapons ] & awprose) {
+		formatex(szMenu,charsmax(szMenu),"\w%s \d[Purchased]", AWP_NAME_2)
+	menu_additem(jMenu, szMenu, "3") ; }
+	
+	else if (crxranks_get_user_xp(id) >= yXP){
+		formatex(szMenu,charsmax(szMenu),"\w%s \d[You Can Buy]", AWP_NAME_2) 
+	menu_additem(jMenu, szMenu, "3") ; }
+	
+	else{
+		formatex(szMenu,charsmax(szMenu),"\d%s \r[XP: %i]", AWP_NAME_2, iXP)
+	menu_additem(jMenu, szMenu, "3") ; }
+	
+	if(gAWP_Paladin[id]){
+		formatex(szMenu,charsmax(szMenu),"\w%s \r[Selected]", AWP_NAME_3)
+	menu_additem(jMenu, szMenu, "4") ; }
+	
+	else if ( g_pdData[ id ][ PlayerWeapons ] & awppaladian ) {
+		formatex(szMenu,charsmax(szMenu),"\w%s \d[Purchased]", AWP_NAME_3)
+	menu_additem(jMenu, szMenu, "4") ; }
+	
+	else if (crxranks_get_user_xp(id) >= zXP){
+		formatex(szMenu,charsmax(szMenu),"\w%s \d[You Can Buy]", AWP_NAME_3) 
+	menu_additem(jMenu, szMenu, "4") ; }
+	
+	else{
+		formatex(szMenu,charsmax(szMenu),"\d%s \r[XP: %i]", AWP_NAME_3, zXP)
+	menu_additem(jMenu, szMenu, "4") ; }
+	
+	menu_setprop(jMenu,MPROP_EXIT,MEXIT_ALL) 
+	menu_display(id,jMenu,0)
+	return PLUGIN_HANDLED 
+}
+/*=============================================================================================================*/
+public awp_menu(id, iMenu, iKey, ent )
+{
+	if(!is_user_alive(id))
+		return PLUGIN_HANDLED
+	
+	switch(iKey)
+	{
+		case 0:
+		{
+			
+			if ( g_pdData[ id ][ CurrentWeapon ] == WeaponAWPDefault|| gAWP_Default[id])
+			{			 
+
+				dust2_chat(id,"!gsG | !nYou are already using this model.")
+			}
+			else
+			{	
+				dust2_chat(id,"!gsG | !nModel successfully exchanged.") 
+				gAWP_Default[id] = true
+				gAWP_Black[id] = false
+				gAWP_Rose[id] = false
+				gAWP_Paladin[id] = false
+				OnItemDeployPost(ent)
+			}
+			
+		}
+		case 1:
+		{
+			if ( g_pdData[ id ][ CurrentWeapon ] == WeaponAWPBlack || gAWP_Black[id])
+			{
+	
+				dust2_chat(id,"!gsG | !nYou are already using this model.")
+			}
+			else
+			{
+				if ( g_pdData[ id ][ PlayerWeapons ] & awpblack )
+				{
+					
+					dust2_chat(id,"!gsG | !nModel successfully exchanged.") 
+					gAWP_Default[id] = false
+					gAWP_Black[id] = true
+					gAWP_Rose[id] = false
+					gAWP_Paladin[id] = false
+					OnItemDeployPost(ent)
+				}
+				else 
+				{
+					
+					if (crxranks_get_user_xp(id) < iXP) 
+					{
+						dust2_chat(id,"!gsG | !nYou need to have more !tXP !nto buy this model.") 
+					}
+					else
+					{
+						crxranks_set_user_xp(id, crxranks_get_user_xp(id) - iXP) 
+						AddWeapon( id , awpblack )
+						OnItemDeployPost(ent)
+						dust2_chat(id,"!gsG | !nCongratulations, you bought !t%s!n!", AWP_NAME_1) 
+						gAWP_Default[id] = false
+						gAWP_Black[id] = true
+						gAWP_Rose[id] = false
+						gAWP_Paladin[id] = false
+						
+					}
+					
+					
+				}
+			}
+			
+		}
+		case 2:
+		{
+			if ( g_pdData[ id ][ CurrentWeapon ] == WeaponAWPRose|| gAWP_Rose[id])
+			{
+	
+				dust2_chat(id,"!gsG | !nYou are already using this model.")
+			}
+			else
+			{
+				if ( g_pdData[ id ][ PlayerWeapons ] & awprose )
+				{
+					dust2_chat(id,"!gsG | !nModel successfully exchanged.") 
+					gAWP_Default[id] = false
+					gAWP_Black[id] = false
+					gAWP_Rose[id] = true
+					gAWP_Paladin[id] = false
+					OnItemDeployPost(ent)
+				}	
+				else 
+				{
+					
+					if (crxranks_get_user_xp(id) < yXP) 
+					{
+						dust2_chat(id,"!gsG | !nYou need to have more !tXP !nto buy this model.") 
+					}
+					else
+					{
+						crxranks_set_user_xp(id, crxranks_get_user_xp(id) - yXP) 
+						AddWeapon( id , awprose )
+						OnItemDeployPost(ent)
+						dust2_chat(id,"!gsG | !nCongratulations, you bought !t%s!n!", AWP_NAME_2) 
+						gAWP_Default[id] = false
+						gAWP_Black[id] = false
+						gAWP_Rose[id] = true
+						gAWP_Paladin[id] = false
+					}
+				}
+				
+				
+			}
+			
+		}
+		case 3:
+		{
+			if ( g_pdData[ id ][ CurrentWeapon ] == WeaponAWPPaladian|| gAWP_Paladin[id])
+			{
+
+				dust2_chat(id,"!gsG | !nYou are already using this model.")
+			}
+			else
+			{
+				if ( g_pdData[ id ][ PlayerWeapons ] & awppaladian )
+				{
+					dust2_chat(id,"!gsG | !nModel successfully exchanged.") 
+					gAWP_Default[id] = false
+					gAWP_Black[id] = false
+					gAWP_Rose[id] = false
+					gAWP_Paladin[id] = true
+					OnItemDeployPost(ent)
+				}
+				else 
+				{
+					
+					if (crxranks_get_user_xp(id) < zXP) 
+					{
+						dust2_chat(id,"!gsG | !nYou need to have more !tXP !nto buy this model.") 
+					}
+					else
+					{
+						crxranks_set_user_xp(id, crxranks_get_user_xp(id) - zXP) 
+						AddWeapon( id , awppaladian)
+						OnItemDeployPost(ent)
+						dust2_chat(id,"!gsG | !nCongratulations, you bought !t%s!n!", AWP_NAME_3) 
+						gAWP_Default[id] = false
+						gAWP_Black[id] = false
+						gAWP_Rose[id] = false
+						gAWP_Paladin[id] = true
+					}
+				}
+				
+				
+			}
+			
+		}
+	}
+	menu_destroy(iMenu)
+	return PLUGIN_HANDLED
+}
+/*==================================================================================================================*/
+
+// Ham Weapon Deploy Forward
+public OnItemDeployPost(ent)
+{
+    // Get weapon's owner
+    static id; id = fm_cs_get_weapon_ent_owner(ent);
+    
+    // Valid owner?
+    if (!pev_valid(id)) return;
+    
+    // Replace weapon models with custom ones
+    switch(cs_get_weapon_id(ent))
+    {
+        case CSW_KNIFE:
+        {
+	    if(gKnife_Default[id])
+	    {
+	    	 set_pev(id, pev_viewmodel2, "models/v_knife.mdl")
+	    }
+	    else if(gKnife_Black[id])
+	    {
+	    	 set_pev(id, pev_viewmodel2, szModels[0][1])
+	    }
+	    else if(gKnife_Rose[id])
+	    {
+	    	 set_pev(id, pev_viewmodel2, szModels[0][2])
+	    }
+	    else if(gKnife_Paladin[id])
+	    {
+	    	  set_pev(id, pev_viewmodel2, szModels[0][3])
+	    }
+        }		
+        case CSW_AK47:
+        {
+		if(gAK47_Default[id])
+		{
+			set_pev(id, pev_viewmodel2, "models/v_ak47.mdl")
+		}
+		else if(gAK47_Black[id])
+		{
+			set_pev(id, pev_viewmodel2, szModels[0][4])
+		}
+		else if(gAK47_Rose[id])
+		{
+			set_pev(id, pev_viewmodel2, szModels[0][5])
+		}
+		else if(gAK47_Paladin[id])
+		{
+			set_pev(id, pev_viewmodel2, szModels[0][6])
+		}           
+        }
+        case CSW_M4A1:
+        {
+		if(gM4A1_Default[id])
+		{
+			set_pev(id, pev_viewmodel2, "models/v_m4a1.mdl")
+		}
+		else if(gM4A1_Black[id])
+		{
+			set_pev(id, pev_viewmodel2, szModels[0][7])
+		}
+		else if(gM4A1_Rose[id])
+		{
+			set_pev(id, pev_viewmodel2, szModels[0][8])
+		}
+		else if(gM4A1_Paladin[id])
+		{
+			set_pev(id, pev_viewmodel2, szModels[0][9])
+		}           
+        }			
+        case CSW_AWP:
+        {
+		if(gAWP_Default[id])
+		{
+			set_pev(id, pev_viewmodel2, "models/v_awp.mdl")
+		}
+		else if(gAWP_Black[id])
+		{
+			set_pev(id, pev_viewmodel2, szModels[0][10])
+		}
+		else if(gAWP_Rose[id])
+		{
+			set_pev(id, pev_viewmodel2, szModels[0][11])
+		}
+		else if(gAWP_Paladin[id])
+		{
+			set_pev(id, pev_viewmodel2, szModels[0][12])
+		}           
+        }
+		
+    }
+}
+
+// Get Weapon Entity's Owner
+fm_cs_get_weapon_ent_owner(ent)
+{
+    // Prevent server crash if entity's private data not initalized
+    if (pev_valid(ent) != 2) return -1;
+
+    return get_pdata_cbase(ent, 41, 4);
+} 
+
+stock dust2_chat(const id, const input[], any:...)
+{
+	
+	new count = 1, players[32]
+	static msg[191]
+	vformat(msg, sizeof(msg) - 1, input, 3)
+	
+	replace_all(msg, 190, "!n", "^x01")
+	replace_all(msg, 190, "!g", "^x04")
+	replace_all(msg, 190, "!t", "^x03")
+	
+	if(id) players[0] = id; else get_players(players, count, "ch")
+	for(new i = 0; i < count; i++)
+		
+	
+{
+	
+	
+	if(is_user_connected(players[i]))
+	{
+		
+		message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("SayText"), _, players[i])
+		write_byte(players[i])
+		write_string(msg)
+		message_end()
+	}
+	
+}
+}
